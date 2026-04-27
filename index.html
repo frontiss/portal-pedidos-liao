@@ -30,6 +30,10 @@
   .btn-primary:hover{background:#24503A}
   .btn-primary:disabled{background:#888;cursor:not-allowed}
   .login-error{color:var(--danger);font-size:13px;margin-top:12px;text-align:center;min-height:20px;display:none}
+  .password-wrap{position:relative;margin-bottom:32px}
+  .password-input{width:100%;padding:14px 44px 14px 16px;border:2px solid var(--border);border-radius:14px;font-family:'DM Sans',sans-serif;font-size:16px;color:var(--primary);background:var(--bg);outline:none;transition:border-color .2s,box-shadow .2s}
+  .password-input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(212,139,58,.15);background:#fff}
+  .toggle-pw{position:absolute;right:14px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text-muted);padding:0;font-size:18px}
   .spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.4);border-top-color:white;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:8px}
   @keyframes spin{to{transform:rotate(360deg)}}
   #app-screen{display:none;min-height:100vh}
@@ -101,6 +105,11 @@
       <input class="pin-input" id="p2" type="text" maxlength="1" inputmode="numeric">
       <input class="pin-input" id="p3" type="text" maxlength="1" inputmode="numeric">
       <input class="pin-input" id="p4" type="text" maxlength="1" inputmode="numeric">
+    </div>
+    <label class="field-label">Contraseña</label>
+    <div class="password-wrap">
+      <input class="password-input" id="pw-input" type="password" placeholder="Introduce tu contraseña" autocomplete="current-password">
+      <button class="toggle-pw" id="toggle-pw" type="button">👁</button>
     </div>
     <button class="btn-primary" id="btn-login">Entrar →</button>
     <div class="login-error" id="login-error"></div>
@@ -201,6 +210,16 @@
 
   btnLogin.addEventListener('click', doLogin);
 
+  // Toggle mostrar/ocultar contraseña
+  document.getElementById('toggle-pw').addEventListener('click', function() {
+    var inp = document.getElementById('pw-input');
+    inp.type = inp.type === 'password' ? 'text' : 'password';
+  });
+
+  document.getElementById('pw-input').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') doLogin();
+  });
+
   function doLogin() {
     var code = pins.map(function(p){ return p.value; }).join('');
     if (code.length < 4) { showLoginErr('Introduce los 4 dígitos'); return; }
@@ -208,10 +227,13 @@
     btnLogin.innerHTML = '<span class="spinner"></span>Entrando...';
     loginError.style.display = 'none';
 
+    var password = document.getElementById('pw-input').value.trim();
+    if (!password) { showLoginErr('Introduce tu contraseña'); resetBtn(); return; }
+
     fetch(API + '/auth/login', {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({code: code})
+      body: JSON.stringify({code: code, password: password})
     })
     .then(function(r){ return r.json().then(function(d){ return {ok:r.ok,data:d}; }); })
     .then(function(res) {
@@ -234,12 +256,14 @@
     btnLogin.disabled = false;
     btnLogin.innerHTML = 'Entrar →';
     pins.forEach(function(p){ p.value=''; });
+    document.getElementById('pw-input').value = '';
     pins[0].focus();
   }
 
   document.getElementById('btn-logout').addEventListener('click', function() {
     token = null; quantities = {}; allProducts = [];
     pins.forEach(function(p){ p.value=''; });
+    document.getElementById('pw-input').value = '';
     appScreen.style.display = 'none';
     loginScreen.style.display = 'flex';
     searchBar.style.display = 'none';
