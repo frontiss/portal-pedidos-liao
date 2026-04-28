@@ -49,6 +49,33 @@
   .delivery-badge{display:inline-flex;align-items:center;gap:8px;background:var(--accent-light);color:var(--accent);font-size:13px;font-weight:600;padding:8px 16px;border-radius:20px;margin-bottom:28px}
   .delivery-badge svg{flex-shrink:0}
   .loading-box{text-align:center;padding:60px 20px;color:var(--text-muted)}
+  .tabs{display:flex;gap:4px;margin-bottom:32px;background:white;padding:6px;border-radius:14px;border:1.5px solid var(--border);width:fit-content}
+  .tab-btn{padding:10px 24px;border:none;border-radius:10px;font-family:'Poppins',sans-serif;font-size:14px;font-weight:600;cursor:pointer;background:transparent;color:var(--text-muted);transition:all .2s}
+  .tab-btn.active{background:var(--primary);color:white}
+  .tab-btn:hover:not(.active){background:var(--bg)}
+  .history-list{display:flex;flex-direction:column;gap:16px;margin-bottom:40px}
+  .history-card{background:white;border-radius:16px;border:1.5px solid var(--border);overflow:hidden}
+  .history-header{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;cursor:pointer;transition:background .15s}
+  .history-header:hover{background:var(--bg)}
+  .history-ref{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:700;color:var(--primary)}
+  .history-date{font-size:12px;color:var(--text-muted);margin-top:2px}
+  .history-right{display:flex;align-items:center;gap:12px}
+  .history-total{font-size:16px;font-weight:700;color:var(--primary)}
+  .state-badge{font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px}
+  .state-draft{background:#FFF3CD;color:#856404}
+  .state-sale{background:#D1E7DD;color:#0A5C36}
+  .state-done{background:#D1E7DD;color:#0A5C36}
+  .state-cancel{background:#F8D7DA;color:#842029}
+  .history-chevron{color:var(--text-muted);transition:transform .2s;font-size:18px}
+  .history-card.open .history-chevron{transform:rotate(180deg)}
+  .history-lines{display:none;border-top:1px solid var(--border)}
+  .history-card.open .history-lines{display:block}
+  .history-line{display:flex;justify-content:space-between;align-items:center;padding:10px 20px;border-bottom:1px solid var(--border);font-size:13px}
+  .history-line:last-child{border-bottom:none}
+  .history-line-name{color:var(--text);font-weight:500;flex:1}
+  .history-line-qty{color:var(--text-muted);margin:0 16px;white-space:nowrap}
+  .history-line-price{font-weight:600;color:var(--primary);white-space:nowrap}
+  .history-empty{text-align:center;padding:60px 20px;color:var(--text-muted);font-style:italic}
   .big-spinner{width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px}
   .search-bar{display:flex;gap:12px;margin-bottom:28px}
   .search-wrap{flex:1;position:relative}
@@ -137,6 +164,16 @@
     <h1 class="page-title">Haz tu pedido</h1>
     <p class="page-subtitle" id="store-info"></p>
     <div id="delivery-day" style="display:none"></div>
+    <div class="tabs" id="tabs" style="display:none">
+      <button class="tab-btn active" id="tab-pedido">🛒 Hacer pedido</button>
+      <button class="tab-btn" id="tab-historial">📋 Mis pedidos</button>
+    </div>
+    <div id="panel-historial" style="display:none">
+      <div class="history-list" id="history-list">
+        <div class="loading-box"><div class="big-spinner"></div>Cargando historial...</div>
+      </div>
+    </div>
+    <div id="panel-pedido">
     <div class="search-bar" id="search-bar" style="display:none">
       <div class="search-wrap">
         <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
@@ -155,6 +192,7 @@
         <button class="btn-order" id="btn-order" disabled>Confirmar pedido</button>
       </div>
     </div>
+    </div><!-- end panel-pedido -->
   </div>
 </div>
 
@@ -287,6 +325,9 @@
     searchBar.style.display = 'none';
     summaryEl.style.display = 'none';
     document.getElementById('delivery-day').style.display = 'none';
+    document.getElementById('tabs').style.display = 'none';
+    document.getElementById('panel-historial').style.display = 'none';
+    document.getElementById('panel-pedido').style.display = 'block';
     productsArea.innerHTML = '<div class="loading-box"><div class="big-spinner"></div>Cargando productos...</div>';
     resetBtn();
     loginError.style.display = 'none';
@@ -305,6 +346,7 @@
       allProducts = res.data.products || [];
       searchBar.style.display = 'flex';
       summaryEl.style.display = 'block';
+      document.getElementById('tabs').style.display = 'flex';
       render(allProducts);
       updateSummary();
     })
@@ -399,6 +441,76 @@
   });
 
   document.getElementById('btn-err-close').addEventListener('click', function() { modalErr.classList.remove('open'); });
+
+  // ── TABS ─────────────────────────────────────────────────────────────
+  var historyLoaded = false;
+
+  document.getElementById('tab-pedido').addEventListener('click', function() {
+    document.getElementById('tab-pedido').classList.add('active');
+    document.getElementById('tab-historial').classList.remove('active');
+    document.getElementById('panel-pedido').style.display = 'block';
+    document.getElementById('panel-historial').style.display = 'none';
+  });
+
+  document.getElementById('tab-historial').addEventListener('click', function() {
+    document.getElementById('tab-historial').classList.add('active');
+    document.getElementById('tab-pedido').classList.remove('active');
+    document.getElementById('panel-pedido').style.display = 'none';
+    document.getElementById('panel-historial').style.display = 'block';
+    if (!historyLoaded) loadHistory();
+  });
+
+  function loadHistory() {
+    var list = document.getElementById('history-list');
+    list.innerHTML = '<div class="loading-box"><div class="big-spinner"></div>Cargando historial...</div>';
+
+    fetch(API + '/orders/history', {
+      headers: {'Authorization': 'Bearer ' + token}
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(res) {
+      historyLoaded = true;
+      var orders = res.orders || [];
+      if (!orders.length) {
+        list.innerHTML = '<div class="history-empty">No tienes pedidos anteriores.</div>';
+        return;
+      }
+      list.innerHTML = '';
+      orders.forEach(function(order) {
+        var stateClass = 'state-' + (order.state === 'Confirmado' ? 'sale' : order.state === 'Completado' ? 'done' : order.state === 'Cancelado' ? 'cancel' : 'draft');
+        var card = document.createElement('div');
+        card.className = 'history-card';
+        var linesHtml = order.lines.map(function(l) {
+          return '<div class="history-line">' +
+            '<span class="history-line-name">' + l.product + '</span>' +
+            '<span class="history-line-qty">' + l.qty + ' uds.</span>' +
+            '<span class="history-line-price">' + fmt(l.subtotal) + ' €</span>' +
+          '</div>';
+        }).join('');
+        card.innerHTML =
+          '<div class="history-header">' +
+            '<div>' +
+              '<div class="history-ref">' + order.ref + '</div>' +
+              '<div class="history-date">' + order.date + '</div>' +
+            '</div>' +
+            '<div class="history-right">' +
+              '<span class="state-badge ' + stateClass + '">' + order.state + '</span>' +
+              '<span class="history-total">' + fmt(order.total) + ' €</span>' +
+              '<span class="history-chevron">▾</span>' +
+            '</div>' +
+          '</div>' +
+          '<div class="history-lines">' + linesHtml + '</div>';
+
+        card.querySelector('.history-header').addEventListener('click', function() {
+          card.classList.toggle('open');
+        });
+        list.appendChild(card);
+      });
+    })
+    .catch(function() {
+      list.innerHTML = '<div class="history-empty">Error cargando el historial.</div>';
+    });
+  }
 
   function fmt(n){ return (n||0).toFixed(2).replace('.',','); }
 }());
