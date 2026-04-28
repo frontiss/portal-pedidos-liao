@@ -76,6 +76,9 @@
   .history-line-qty{color:var(--text-muted);margin:0 16px;white-space:nowrap}
   .history-line-price{font-weight:600;color:var(--primary);white-space:nowrap}
   .history-empty{text-align:center;padding:60px 20px;color:var(--text-muted);font-style:italic}
+  .btn-repeat{background:var(--primary);color:white;border:none;padding:7px 14px;border-radius:8px;font-family:'Poppins',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:background .2s;white-space:nowrap}
+  .btn-repeat:hover{background:#24503A}
+  .repeat-toast{position:fixed;bottom:32px;left:50%;transform:translateX(-50%);background:var(--primary);color:white;padding:12px 24px;border-radius:12px;font-size:14px;font-weight:600;z-index:9999;animation:fadeUp .3s ease;box-shadow:var(--shadow-lg)}
   .big-spinner{width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px}
   .search-bar{display:flex;gap:12px;margin-bottom:28px}
   .search-wrap{flex:1;position:relative}
@@ -510,6 +513,59 @@
     .catch(function() {
       list.innerHTML = '<div class="history-empty">Error cargando el historial.</div>';
     });
+  }
+
+  // ── REPEAT ORDER ─────────────────────────────────────────────────────
+  function repeatOrder(lines) {
+    // Reset current quantities
+    quantities = {};
+
+    // Load quantities from historical order
+    var notFound = 0;
+    lines.forEach(function(line) {
+      // Find product in allProducts by name (since history gives us name not id)
+      var product = allProducts.filter(function(p) {
+        return p.name === line.product;
+      })[0];
+      if (product) {
+        quantities[product.id] = line.qty;
+      } else {
+        notFound++;
+      }
+    });
+
+    // Switch to order tab
+    document.getElementById('tab-pedido').classList.add('active');
+    document.getElementById('tab-historial').classList.remove('active');
+    document.getElementById('panel-pedido').style.display = 'block';
+    document.getElementById('panel-historial').style.display = 'none';
+
+    // Re-render products with loaded quantities
+    var q = searchField.value.toLowerCase();
+    var filtered = q ? allProducts.filter(function(p){
+      return (p.name + p.ref + p.category).toLowerCase().indexOf(q) !== -1;
+    }) : allProducts;
+    render(filtered);
+    updateSummary();
+
+    // Scroll to top
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    // Show toast
+    var msg = notFound > 0
+      ? 'Pedido cargado (' + notFound + ' producto(s) ya no disponibles)'
+      : 'Pedido cargado. Revisa y confirma cuando quieras.';
+    showToast(msg);
+  }
+
+  function showToast(msg) {
+    var existing = document.querySelector('.repeat-toast');
+    if (existing) existing.remove();
+    var toast = document.createElement('div');
+    toast.className = 'repeat-toast';
+    toast.textContent = msg;
+    document.body.appendChild(toast);
+    setTimeout(function() { toast.remove(); }, 3500);
   }
 
   function fmt(n){ return (n||0).toFixed(2).replace('.',','); }
