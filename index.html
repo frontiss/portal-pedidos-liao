@@ -528,13 +528,19 @@
     // Reset current quantities
     quantities = {};
 
-    // Load quantities from historical order
+    // Load quantities from historical order using product_id
     var notFound = 0;
     lines.forEach(function(line) {
-      // Find product in allProducts by name (since history gives us name not id)
-      var product = allProducts.filter(function(p) {
-        return p.name === line.product;
-      })[0];
+      if (!line.qty || line.qty <= 0) return;
+      // First try by product_id (most reliable)
+      var product = null;
+      if (line.product_id) {
+        product = allProducts.filter(function(p) { return p.id === line.product_id; })[0];
+      }
+      // Fallback: search by name
+      if (!product) {
+        product = allProducts.filter(function(p) { return p.name === line.product; })[0];
+      }
       if (product) {
         quantities[product.id] = line.qty;
       } else {
