@@ -544,13 +544,13 @@
           '<div class="history-header">' +
             '<div>' +
               '<div class="history-ref">' + order.ref + '</div>' +
-              '<div class="history-date">' + formatDate(order.date) + '</div>' +
+              '<div class="history-date">' + (function(d){ if(!d) return ''; var p=d.replace('T',' ').split(' '); var dp=p[0].split('-'); var tp=p[1]?p[1].substring(0,5):''; return dp.length===3?dp[2]+'/'+dp[1]+'/'+dp[0]+(tp?' '+tp:''):d; })(order.date) + '</div>' +
             '</div>' +
             '<div class="history-right">' +
               '<span class="state-badge ' + stateClass + '">' + order.state + '</span>' +
               '<span class="history-total">' + fmt(order.total) + ' \u20ac</span>' +
               '<button class="btn-repeat">\u21a9 Repetir</button>' +
-              (order.state === 'Borrador' ? '<button class="btn-modify">\u270f Modificar</button>' : '') +
+              (['Borrador','draft'].indexOf(order.state) !== -1 ? '<button class="btn-modify">\u270f Modificar</button>' : '') +
               '<span class="history-chevron">\u25be</span>' +
             '</div>' +
           '</div>' +
