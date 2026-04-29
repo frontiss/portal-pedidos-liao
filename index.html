@@ -78,6 +78,8 @@
   .history-empty{text-align:center;padding:60px 20px;color:var(--text-muted);font-style:italic}
   .btn-repeat{background:var(--primary);color:white;border:none;padding:7px 14px;border-radius:8px;font-family:'Poppins',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:background .2s;white-space:nowrap}
   .btn-repeat:hover{background:#24503A}
+  .btn-modify{background:var(--accent);color:white;border:none;padding:7px 14px;border-radius:8px;font-family:'Poppins',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:background .2s;white-space:nowrap}
+  .btn-modify:hover{background:#C07828}
   .repeat-toast{position:fixed;bottom:32px;left:50%;transform:translateX(-50%);background:var(--primary);color:white;padding:12px 24px;border-radius:12px;font-size:14px;font-weight:600;z-index:9999;animation:fadeUp .3s ease;box-shadow:var(--shadow-lg)}
   .big-spinner{width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px}
   .search-bar{display:flex;gap:12px;margin-bottom:28px}
@@ -460,23 +462,34 @@
     var lines = Object.keys(quantities).filter(function(k){ return quantities[k]>0; })
       .map(function(k){ return {product_id:+k, quantity:quantities[k]}; });
 
-    fetch(API + '/orders', {
-      method: 'POST',
+    var url = modifyingOrderId ? API + '/orders/' + modifyingOrderId : API + '/orders';
+    var method = modifyingOrderId ? 'PUT' : 'POST';
+
+    fetch(url, {
+      method: method,
       headers: {'Content-Type':'application/json','Authorization':'Bearer '+token},
       body: JSON.stringify({lines: lines})
     })
     .then(function(r){ return r.json().then(function(d){ return {ok:r.ok,data:d}; }); })
     .then(function(res) {
-      btnOrder.disabled = false; btnOrder.innerHTML = 'Confirmar pedido';
+      btnOrder.disabled = false;
+      btnOrder.innerHTML = 'Confirmar pedido';
+      modifyingOrderId = null;
+      historyLoaded = false;
       if (!res.ok) { modalErrMsg.textContent = res.data.detail||'Error al enviar.'; modalErr.classList.add('open'); return; }
       modalRef.textContent = res.data.order_ref;
       modalOk.classList.add('open');
     })
-    .catch(function(){ btnOrder.disabled=false; btnOrder.innerHTML='Confirmar pedido'; modalErr.classList.add('open'); });
+    .catch(function(){ btnOrder.disabled=false; btnOrder.innerHTML='Confirmar pedido'; modifyingOrderId=null; modalErr.classList.add('open'); });
   });
 
   document.getElementById('btn-reset').addEventListener('click', function() {
-    quantities = {}; modalOk.classList.remove('open'); render(allProducts); updateSummary();
+    quantities = {};
+    modifyingOrderId = null;
+    btnOrder.innerHTML = 'Confirmar pedido';
+    modalOk.classList.remove('open');
+    render(allProducts);
+    updateSummary();
     window.scrollTo({top:0,behavior:'smooth'});
   });
 
@@ -531,12 +544,13 @@
           '<div class="history-header">' +
             '<div>' +
               '<div class="history-ref">' + order.ref + '</div>' +
-              '<div class="history-date">' + order.date + '</div>' +
+              '<div class="history-date">' + formatDate(order.date) + '</div>' +
             '</div>' +
             '<div class="history-right">' +
               '<span class="state-badge ' + stateClass + '">' + order.state + '</span>' +
               '<span class="history-total">' + fmt(order.total) + ' \u20ac</span>' +
               '<button class="btn-repeat">\u21a9 Repetir</button>' +
+              (order.state === 'Borrador' ? '<button class="btn-modify">\u270f Modificar</button>' : '') +
               '<span class="history-chevron">\u25be</span>' +
             '</div>' +
           '</div>' +
@@ -547,6 +561,14 @@
           e.stopPropagation();
           repeatOrder(orderLines);
         });
+
+        var modifyBtn = card.querySelector('.btn-modify');
+        if (modifyBtn) {
+          modifyBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            modifyOrder(order.id, order.ref, orderLines);
+          });
+        }
 
         card.querySelector('.history-header').addEventListener('click', function(e) {
           if (e.target.classList.contains('btn-repeat')) return;
@@ -560,8 +582,53 @@
     });
   }
 
+  function formatDate(d) {
+    if (!d) return '';
+    // d comes as "YYYY-MM-DD HH:MM:SS" or "YYYY-MM-DD"
+    var parts = d.replace('T', ' ').split(' ');
+    var datePart = parts[0].split('-');
+    var timePart = parts[1] ? parts[1].substring(0,5) : '';
+    if (datePart.length === 3) {
+      return datePart[2] + '/' + datePart[1] + '/' + datePart[0] + (timePart ? ' ' + timePart : '');
+    }
+    return d;
+  }
+
   // ── REPEAT ORDER ─────────────────────────────────────────────────────
+  var modifyingOrderId = null;
+
+  function modifyOrder(orderId, orderRef, lines) {
+    modifyingOrderId = orderId;
+
+    // Load quantities from order lines
+    quantities = {};
+    var notFound = 0;
+    lines.forEach(function(line) {
+      if (!line.qty || line.qty <= 0) return;
+      var product = allProducts.filter(function(p){ return p.id === line.product_id; })[0];
+      if (!product) product = allProducts.filter(function(p){ return p.name === line.product; })[0];
+      if (product) quantities[product.id] = line.qty;
+      else notFound++;
+    });
+
+    // Switch to order tab
+    document.getElementById('tab-pedido').classList.add('active');
+    document.getElementById('tab-historial').classList.remove('active');
+    document.getElementById('panel-pedido').style.display = 'block';
+    document.getElementById('panel-historial').style.display = 'none';
+
+    render(allProducts);
+    updateSummary();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    // Update button text to indicate modification mode
+    btnOrder.textContent = 'Guardar cambios (' + orderRef + ')';
+    showToast('Modifica las cantidades y pulsa "Guardar cambios"');
+  }
+
   function repeatOrder(lines) {
+    modifyingOrderId = null;
+    btnOrder.innerHTML = 'Confirmar pedido';
     // Reset current quantities
     quantities = {};
 
