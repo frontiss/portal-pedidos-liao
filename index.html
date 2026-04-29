@@ -498,13 +498,21 @@
             '</div>' +
             '<div class="history-right">' +
               '<span class="state-badge ' + stateClass + '">' + order.state + '</span>' +
-              '<span class="history-total">' + fmt(order.total) + ' €</span>' +
-              '<span class="history-chevron">▾</span>' +
+              '<span class="history-total">' + fmt(order.total) + ' \u20ac</span>' +
+              '<button class="btn-repeat">\u21a9 Repetir</button>' +
+              '<span class="history-chevron">\u25be</span>' +
             '</div>' +
           '</div>' +
           '<div class="history-lines">' + linesHtml + '</div>';
 
-        card.querySelector('.history-header').addEventListener('click', function() {
+        var orderLines = order.lines;
+        card.querySelector('.btn-repeat').addEventListener('click', function(e) {
+          e.stopPropagation();
+          repeatOrder(orderLines);
+        });
+
+        card.querySelector('.history-header').addEventListener('click', function(e) {
+          if (e.target.classList.contains('btn-repeat')) return;
           card.classList.toggle('open');
         });
         list.appendChild(card);
